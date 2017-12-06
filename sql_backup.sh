@@ -46,9 +46,10 @@ for DB_NAME in `mysql -u $DB_USER -h $DB_HOST -p$DB_PASS -e "show databases"|gre
 do
         echo "Dumping $DB_NAME .."
         mysqldump --skip-extended-insert --skip-set-charset -u $DB_USER -h $DB_HOST -p$DB_PASS $DB_NAME --result-file=$LOCAL_DIR/$DB_NAME.sql
+	chmod 600 $LOCAL_DIR/$DB_NAME.sql
         echo "Encrypting $DB_NAME .."
         gpg -r "$GPG_RCPT" --output $LOCAL_DIR"/sql_"$DB_NAME"_"$DATUM".gpg" --encrypt $LOCAL_DIR/$DB_NAME.sql
-	chmod 600 $LOCAL_DIR/$DB_NAME.gpg
+	chmod 600 $LOCAL_DIR"/sql_"$DB_NAME"_"$DATUM".gpg"
 	echo "Deleting plaintext for $DB_NAME .."
         rm $LOCAL_DIR/$DB_NAME.sql
 done
@@ -56,13 +57,13 @@ done
 # transfer to remote
 if [[ $REMOTE -eq "1" ]]; then
         echo "Transferring to $REMOTE_HOST .."
-        rsync -ravhP $LOCAL_DIR/*.gpg $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR
+        rsync -ravhP $LOCAL_DIR"/sql_*.gpg" $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR
 fi
 
 # clean after
 if [[ $DELETE_LOCAL -eq "1" ]]; then
 	echo "Cleaning up .."
-	rm $LOCAL_DIR/*.gpg
+	rm $LOCAL_DIR"/sql_*.gpg"
 fi
 
 # finish
