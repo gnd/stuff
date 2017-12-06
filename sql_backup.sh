@@ -48,7 +48,7 @@ do
         mysqldump --skip-extended-insert --skip-set-charset -u $DB_USER -h $DB_HOST -p$DB_PASS $DB_NAME --result-file=$LOCAL_DIR/$DB_NAME.sql
         echo "Encrypting $DB_NAME .."
         gpg -r "$GPG_RCPT" --output $LOCAL_DIR"/sql_"$DB_NAME"_"$DATUM".gpg" --encrypt $LOCAL_DIR/$DB_NAME.sql
-	chmod 600 $LOCAL_DIR/$DB_NAME.sql
+	chmod 600 $LOCAL_DIR/$DB_NAME.gpg
 	echo "Deleting plaintext for $DB_NAME .."
         rm $LOCAL_DIR/$DB_NAME.sql
 done
