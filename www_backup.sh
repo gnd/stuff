@@ -37,7 +37,7 @@ now=`date +"%D %H:%M"`
 echo ""
 echo "--- $now Backup starting .."
 
-# dump & encrypt single databases
+# pack & encrypt domains
 for DOMAIN in `ls $WWW_DIR`
 do
         echo "Packing $DOMAIN .."
