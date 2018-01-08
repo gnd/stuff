@@ -11,6 +11,8 @@ import sys
 # set some globals
 search = False
 arr = ['0','1','2','3','4','5','6','7','8','9','0','a','b','c','d','e','f']
+ar1 = '0123456789'
+ar2 = '0123456789abcdef'
 
 # check if all arguments
 if (len(sys.argv) < 2):
@@ -43,13 +45,14 @@ i=0
 while (i < len(k)):
     if (k[i] == '\\'):
         if(k[i+1] == 'x'):
-            # skip some chars
-            if ((k[i+3] == '\\') & (k[i+2] in arr)):
-                dec+=' '
-                i+=3
-            else:
+            if k[i+2] in ar1 & (k[i+3] in ar2:
                 dec+=k[i:i+4].replace('\\x','').decode('hex')
                 i+=4
+            else:
+                # skip some chars
+                if ((k[i+3] == '\\') & (k[i+2] in arr)):
+                    dec+=' '
+                    i+=3
         else:
             dec+=k[i]
             i+=1
