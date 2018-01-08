@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # php-based shell search
 # gnd, 2012 - 2018
 #
@@ -57,7 +57,6 @@ do
 done
 
 # find out new occurences (base_cfun)
-IFS=$'\n'
 find $SEARCH_DIR -type f -name "*.php" -exec grep -l "base64_decode(" {} \; >> $SCRIPT_DIR/base.txt
 for k in `cat $SCRIPT_DIR/base.txt`
 do
