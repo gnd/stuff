@@ -45,7 +45,7 @@ i=0
 while (i < len(k)):
     if (k[i] == '\\'):
         if(k[i+1] == 'x'):
-            if k[i+2] in ar1 & (k[i+3] in ar2:
+            if k[i+2] in ar1 & k[i+3] in ar2:
                 dec+=k[i:i+4].replace('\\x','').decode('hex')
                 i+=4
             else:
