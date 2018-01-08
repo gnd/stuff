@@ -59,7 +59,7 @@ while (i < len(k)):
 
 # search for patterns
 if search:
-    if (p1 in dec) & bool(re.search(r,p2)):
+    if (p1 in dec) & bool(re.search(p2,dec)):
         print encfile
         sys.exit(0)
 
