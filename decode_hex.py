@@ -53,6 +53,8 @@ while (i < len(k)):
                 if ((k[i+3] == '\\') & (k[i+2] in arr)):
                     dec+=' '
                     i+=3
+                else:
+                    i+=2
         else:
             dec+=k[i]
             i+=1
