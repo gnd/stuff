@@ -11,7 +11,7 @@ arr = ['0','1','2','3','4','5','6','7','8','9','0','a','b','c','d','e','f']
 
 # check if all arguments
 if (len(sys.argv) < 2):
-    print "Usage: dechex.py <file_name>"
+    print "Usage: decode_hex.py <file_name>"
     sys.exit(0)
 
 # check if file exists
