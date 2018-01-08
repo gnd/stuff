@@ -5,17 +5,29 @@
 ####################################################
 
 import os
+import re
 import sys
 
+# set some globals
+search = False
 arr = ['0','1','2','3','4','5','6','7','8','9','0','a','b','c','d','e','f']
 
 # check if all arguments
 if (len(sys.argv) < 2):
     print "Usage: decode_hex.py <file_name>"
+    print "Usage: decode_hex.py [-l] ['pattern'] ['regexp pattern'] <file_name>"
     sys.exit(0)
 
-# check if file exists
-encfile = sys.argv[1]
+# process input args
+if (sys.argv[1] == "-l"):
+    search = True
+    p1 = sys.argv[2].strip("'")
+    p2 = sys.argv[3].strip("'")
+    encfile = sys.argv[4]
+else:
+    encfile = sys.argv[1]
+
+# check if encfile exists
 if ( not os.path.isfile(encfile)):
     print "File %s does not exist" % encfile
 else:
@@ -24,7 +36,8 @@ else:
     f.close()
 
 # decode hex parts of the file
-print "Decoding .."
+if not search:
+    print "Decoding .."
 dec=""
 i=0
 while (i < len(k)):
@@ -35,8 +48,7 @@ while (i < len(k)):
                 dec+=' '
                 i+=3
             else:
-                a = k[i:i+4]
-                dec+=a.replace('\\x','').decode('hex')
+                dec+=k[i:i+4].replace('\\x','').decode('hex')
                 i+=4
         else:
             dec+=k[i]
@@ -45,10 +57,17 @@ while (i < len(k)):
         dec+=k[i]
         i+=1
 
-# write decoded file into file_name.dec
-decfile = encfile + ".dec"
-f = file(decfile, 'w') # will overwrite
-f.write(dec)
-f.close()
+# search for patterns
+if search:
+    if (p1 in dec) & bool(re.search(r,p2)):
+        print encfile
+        sys.exit(0)
 
-print "Done !"
+# .. or just output decoded file
+else:
+    # write decoded file into file_name.dec
+    decfile = encfile + ".dec"
+    f = file(decfile, 'w') # will overwrite
+    f.write(dec)
+    f.close()
+    print "Done !"
