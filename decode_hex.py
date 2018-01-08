@@ -28,10 +28,14 @@ i=0
 while (i < len(k)):
     if (k[i] == '\\'):
         if(k[i+1] == 'x'):
-            a = k[i:i+4]
-            a = a.replace('\\x','').decode('hex')
-            dec+=a
-            i+=4
+            # skip some chars
+            if ((k[i+3] == '\\') & (k[i+2] in arr)):
+                dec+=' '
+                i+=3
+            else:
+                a = k[i:i+4]
+                dec+=a.replace('\\x','').decode('hex')
+                i+=4
         else:
             dec+=k[i]
             i+=1
