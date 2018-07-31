@@ -65,7 +65,7 @@ sed -i 's/jdk.jar.disabledAlgorithms/# jdk.jar.disabledAlgorithms/g' $TMPFILE
 mv $TMPFILE /etc/java-$VER-openjdk/security/java.security
 echo ".. java.security updated"
 
-# Launch jnviewer
+# Launch jviewer
 read -p "Please provide path to jviewer.jnlp: " JNPATH
 if [ ! -f "$JNPATH/jviewer.jnlp" ]; then
     echo "File not found!"
