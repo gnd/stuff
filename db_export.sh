@@ -53,8 +53,8 @@ do
     echo "Exporting $DB_NAME credentials .."
     if [[ $DUMP_USERS -eq "1" ]]; then
             USER_NAME=`mysql -u $DB_USER -h $DB_HOST -p$DB_PASS -e "use mysql; select User from db where Db = '$DB_NAME'"|tail -1`
-            USER_PASS=`mysql -u $DB_USER -h $DB_HOST -p$DB_PASS -e "use mysql; select Password from user where User = '$USER_NAME'"|tail -1`
-            echo "$USER_NAME $USER_PASS" > $LOCAL_DIR/$DB_NAME.txt
+            USER_HASH=`mysql -u $DB_USER -h $DB_HOST -p$DB_PASS -e "use mysql; select Password from user where User = '$USER_NAME'"|tail -1`
+            echo "$USER_NAME $USER_HASH" > $LOCAL_DIR/$DB_NAME.txt
             chmod 600 $LOCAL_DIR/$DB_NAME.txt
     fi
 done
