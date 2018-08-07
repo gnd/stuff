@@ -6,7 +6,6 @@
 ##############################################
 
 # set some globals
-DATUM=`date +%D|sed 's/\//_/g'`
 LOCAL_DIR=""
 DUMP_USERS=""
 
