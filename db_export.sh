@@ -40,7 +40,7 @@ if [[ -z $DB_USER ]]; then
 	exit
 fi
 
-# dump & encrypt single databases
+# dump single databases
 for DB_NAME in `mysql -u $DB_USER -h $DB_HOST -p$DB_PASS -e "show databases"|grep -v "+"|grep -v "Database"|grep -v information_schema|grep -v performance_schema`
 do
 	echo "Dumping $DB_NAME .."
