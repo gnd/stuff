@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# export mysql dbs for export
+# export mysql dbs for migration
 #
 # gnd @ gnd.sk, 2009 - 2018
 ##############################################
@@ -14,6 +14,13 @@ DUMP_USERS=""
 DB_HOST=""
 DB_PASS=""
 DB_USER=""
+
+# check if this is run as root
+ROOT=`whoami`
+if [[ $ROOT != "root" ]]; then
+    echo "Please run as root."
+    exit
+fi
 
 # check if params set
 if [[ -z $LOCAL_DIR ]]; then
@@ -38,11 +45,14 @@ for DB_NAME in `mysql -u $DB_USER -h $DB_HOST -p$DB_PASS -e "show databases"|gre
 do
 	echo "Dumping $DB_NAME .."
 	mysqldump --skip-extended-insert --skip-set-charset -u $DB_USER -h $DB_HOST -p$DB_PASS $DB_NAME --result-file=$LOCAL_DIR/$DB_NAME.sql
+	chmod 600 $LOCAL_DIR/$DB_NAME.sql
 
-	# transfer to remote
+	# dump user:pass
+	echo "Exporting $DB_NAME credentials .."
 	if [[ $DUMP_USERS -eq "1" ]]; then
-		$USER_NAME = `mysql -u $DB_USER -h $DB_HOST -p$DB_PASS -e "use mysql; select User from db where Db = '$DB_NAME'"`
-		$USER_PASS = `mysql -u $DB_USER -h $DB_HOST -p$DB_PASS -e "use mysql; select Password from user where User = '$USER_NAME'"`
-		echo "$USER_NAME $USER_PASS"> $LOCAL_DIR/$DB_NAME.txt
+		USER_NAME=`mysql -u $DB_USER -h $DB_HOST -p$DB_PASS -e "use mysql; select User from db where Db = '$DB_NAME'"|tail -1`
+		USER_PASS=`mysql -u $DB_USER -h $DB_HOST -p$DB_PASS -e "use mysql; select Password from user where User = '$USER_NAME'"|tail -1`
+		echo "$USER_NAME $USER_PASS" > $LOCAL_DIR/$DB_NAME.txt
+		chmod 600 $LOCAL_DIR/$DB_NAME.txt
 	fi
 done
