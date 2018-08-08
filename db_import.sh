@@ -12,8 +12,8 @@ IMPORT_CREDS=""
 
 # db server conf
 DB_HOST=""
-DB_PASS=""
 DB_USER=""
+DB_PASS=""
 
 # check if this is run as root
 ROOT=`whoami`
@@ -42,7 +42,7 @@ fi
 
 # check if user really wants to drop dbs
 if [[ $DROP_DBS -eq "1" ]]; then
-    read -p "Do you really want to drop all dbs before importing ? [yes/no]: " $ANS
+    read -p "Do you really want to drop all dbs before importing ? [yes/no]: " ANS
     if [[ $ANS != "yes" ]]; then
         DROP_DBS=0
     fi
