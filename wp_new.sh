@@ -9,6 +9,10 @@
 #
 # gnd, 2015 - 2018
 #############################################
+# Set some globals
+DATUM=`/bin/date +%D|sed 's/\//_/g'`
+USER=`ls -la .|tail -1|awk {'print $3;'}`
+GROUP=""
 
 # Check if this is run as root
 ROOT=`whoami`
@@ -17,10 +21,11 @@ if [[ $ROOT != "root" ]]; then
     exit
 fi
 
-# Set some globals
-DATUM=`/bin/date +%D|sed 's/\//_/g'`
-USER=`ls -la .|tail -1|awk {'print $3;'}`
-GROUP="www-data"
+# Check if group set
+if [[ -z $GROUP ]]; then
+    echo "Please set the default GROUP variable"
+    exit
+fi
 
 # Extract the latest version
 wget https://wordpress.org/latest.tar.gz
