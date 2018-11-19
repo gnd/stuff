@@ -29,7 +29,7 @@ fi
 # delete files older then RETENTION_DAYS
 for f in `find $LOCAL_DIR -type f -name "www_*.gpg" -mtime +$RETENTION_DAYS`
 do
-        rm $f
+	rm $f
 done
 
 # do the backup
@@ -40,20 +40,23 @@ echo "--- $now Backup starting .."
 # pack & encrypt domains
 for DOMAIN in `ls $WWW_DIR`
 do
-        echo "Packing $DOMAIN .."
-        nice tar -cf $LOCAL_DIR/$DOMAIN"_"$DATUM.tar $WWW_DIR/$DOMAIN
+    echo "Packing $DOMAIN .."
+    nice tar -cf $LOCAL_DIR/$DOMAIN"_"$DATUM.tar $WWW_DIR/$DOMAIN
 	chmod 600 $LOCAL_DIR/$DOMAIN"_"$DATUM.tar
-        echo "Encrypting $DOMAIN .."
+    echo "Encrypting $DOMAIN .."
 	nice gpg -r "$GPG_RCPT" --output $LOCAL_DIR"/www_"$DOMAIN"_"$DATUM".gpg" --encrypt $LOCAL_DIR/$DOMAIN"_"$DATUM".tar"
 	chmod 600 $LOCAL_DIR"/www_"$DOMAIN"_"$DATUM".gpg"
 	echo "Deleting plaintext for $DOMAIN .."
-        rm $LOCAL_DIR/$DOMAIN"_"$DATUM".tar"
+    rm $LOCAL_DIR/$DOMAIN"_"$DATUM".tar"
 done
 
 # transfer to remote
 if [[ $REMOTE -eq "1" ]]; then
-        echo "Transferring to $REMOTE_HOST .."
-        rsync -ravhP $LOCAL_DIR"/www_*.gpg" $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR
+    echo "Transferring to $REMOTE_HOST .."
+	for f in `find $LOCAL_DIR -type f -name "www_*.gpg"`
+	do
+    	rsync -ravhP $f $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR
+	done
 fi
 
 # clean after
