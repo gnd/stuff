@@ -8,6 +8,9 @@
 # 	of course patterns might change and this list is by far not exhaustive
 # 	but as a early warning system of sorts it pretty much works..
 #
+# prerequisities:
+#	sendemail
+#
 ###############################################################################
 
 # some globals
@@ -17,6 +20,14 @@ MONITORING=""
 MESSAGE=""
 NOTIFY=0
 IFS=$'\n'
+
+# sendemail setup
+SERVER=""
+PORT="587"
+USER=""
+PASS=""
+FROM=""
+TO=""
 
 # prep tmpfile
 RND=`openssl rand -hex 2`
@@ -28,7 +39,7 @@ chmod 600 /tmp/diff_$RND
 compare() {
 	TXT=$1
 	OLD=$2
-	NEW=$3	
+	NEW=$3
 	OLDNUM=`wc -l < $SCRIPT_DIR/$OLD`
 	NEWNUM=`wc -l < $SCRIPT_DIR/$NEW`
 	if [ "$OLDNUM" -ne "$NEWNUM" ]; then
@@ -52,7 +63,7 @@ mv $SCRIPT_DIR/eval_split.txt $SCRIPT_DIR/eval_split.old
 find $SEARCH_DIR -type f -name "*.php" -exec grep -l "eval(" {} \; >> $SCRIPT_DIR/eval.txt
 for k in `cat $SCRIPT_DIR/eval.txt`
 do
-        grep -l base64_decode "$k" >> $SCRIPT_DIR/eval_base.txt
+    grep -l base64_decode "$k" >> $SCRIPT_DIR/eval_base.txt
 	grep -l '$GLOBALS\[$GLOBALS' "$k" >> $SCRIPT_DIR/eval_glob.txt
 done
 
@@ -60,14 +71,14 @@ done
 find $SEARCH_DIR -type f -name "*.php" -exec grep -l "base64_decode(" {} \; >> $SCRIPT_DIR/base.txt
 for k in `cat $SCRIPT_DIR/base.txt`
 do
-        grep -l create_function "$k" >> $SCRIPT_DIR/base_cfun.txt
+    grep -l create_function "$k" >> $SCRIPT_DIR/base_cfun.txt
 done
 
 # find out new occurences (hex + eval)
 find $SEARCH_DIR -type f -name "*.php" -exec grep -l '[\][x][0-9a-fA-F]\{2\}[\][x][0-9a-fA-F]\{2\}[\][x][0-9a-fA-F]\{2\}[\][x][0-9a-fA-F]\{2\}[\][x][0-9a-fA-F]\{2\}[\][x][0-9a-fA-F]\{2\}' {} \; >> $SCRIPT_DIR/hex.txt
 for k in `cat $SCRIPT_DIR/hex.txt`
 do
-        $SCRIPT_DIR/decode_hex.py -l '${"GLOBALS"}' 'eval[^(]*\(' "$k" >> $SCRIPT_DIR/hex_eval.txt
+    $SCRIPT_DIR/decode_hex.py -l '${"GLOBALS"}' 'eval[^(]*\(' "$k" >> $SCRIPT_DIR/hex_eval.txt
 done
 
 # find out new occurences ( eval/* .* */( )
@@ -82,6 +93,7 @@ compare "hex + eval" hex_eval.old hex_eval.txt
 
 # notify on any changes
 if [ $NOTIFY -eq 1 ]; then
-	cat $TMPFILE | mail -s $MESSAGE $MONITORING 
-        rm $TMPFILE
+	OUTPUT=`cat $TMPFILE`
+	sendemail -o tls=yes -s $SERVER:$PORT -xu $USER -xp $PASS -f $FROM -t $TO -u $MESSAGE -m "$OUTPUT"
+	rm $TMPFILE
 fi
