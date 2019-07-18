@@ -21,6 +21,16 @@ Example usage:
     python transcribe_async.py gs://cloud-samples-tests/speech/vr.flac
 """
 
+""" Usage:
+    - create a account on Google Cloud & create first app
+    - get auth .json like here: https://cloud.google.com/docs/authentication/getting-started
+    - export GOOGLE_APPLICATION_CREDENTIALS
+    - create a new bucket, or use an existing one and upload file to be transcribed (has to be mono)
+    - update bucket permissions (make urself be in Storage Legacy Bucket Owner)
+    - get link of file
+    - run like above
+"""
+
 import argparse
 import io
 
