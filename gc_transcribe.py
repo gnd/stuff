@@ -36,7 +36,7 @@ import io
 
 
 # [START speech_transcribe_async]
-def transcribe_file(speech_file):
+def transcribe_file(speech_file, lang):
     """Transcribe the given audio file asynchronously."""
     from google.cloud import speech
     from google.cloud.speech import enums
@@ -71,7 +71,7 @@ def transcribe_file(speech_file):
 
 
 # [START speech_transcribe_async_gcs]
-def transcribe_gcs(gcs_uri):
+def transcribe_gcs(gcs_uri, lang):
     """Asynchronously transcribes the audio file specified by the gcs_uri."""
     from google.cloud import speech
     from google.cloud.speech import enums
@@ -81,8 +81,8 @@ def transcribe_gcs(gcs_uri):
     audio = types.RecognitionAudio(uri=gcs_uri)
     config = types.RecognitionConfig(
         encoding=enums.RecognitionConfig.AudioEncoding.LINEAR16,
-        sample_rate_hertz=48000,
-        language_code='de-DE')
+        sample_rate_hertz=44100,
+        language_code=lang)
 
     operation = client.long_running_recognize(config, audio)
 
@@ -93,19 +93,16 @@ def transcribe_gcs(gcs_uri):
     # them to get the transcripts for the entire audio file.
     for result in response.results:
         # The first alternative is the most likely one for this portion.
-        print(u'Transcript: {}'.format(result.alternatives[0].transcript))
-        print('Confidence: {}'.format(result.alternatives[0].confidence))
-# [END speech_transcribe_async_gcs]
+        print(u'{}'.format(result.alternatives[0].transcript))
+        #print('Confidence: {}'.format(result.alternatives[0].confidence))
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(
-        description=__doc__,
-        formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument(
-        'path', help='File or GCS path for audio file to be recognized')
+    parser = argparse.ArgumentParser(description=__doc__,formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument('path', help='File or GCS path for audio file to be recognized')
+    parser.add_argument('lang', help='The language code of the file to be recognized')
     args = parser.parse_args()
     if args.path.startswith('gs://'):
-        transcribe_gcs(args.path)
+        transcribe_gcs(args.path, args.lang)
     else:
-        transcribe_file(args.path)
+        transcribe_file(args.path, args.lang)
