@@ -1,13 +1,11 @@
 #!/bin/bash
 #
-# script to insta-update wordpress
+# Script to insta-update wordpress
 #
 # Usage:
+#   run from the wordpress root dir
 #
-# run from the wordpress root dir
-#
-#
-# gnd, 2015 - 2018
+# gnd, 2015 - 2019
 #############################################
 
 # Check if this is run as root
@@ -59,13 +57,37 @@ chown $USER:$GROUP * -R
 chmod 750 * -R
 chmod 770 wp-content -R
 chmod 750 wp-content/themes -R
-chmod 750 wp-content/plugins -R
+chmod 770 wp-content/plugins -R
+chmod g+s wp-content/plugins -R
 echo "done."
 
 # Prohibit file edit via WP
-echo "Modifying config (DISALLOW_FILE_EDIT .."
-echo "define('DISALLOW_FILE_EDIT', true);" >> wp-config.php
-echo "done."
+RES=`cat wp-config.php|grep DISALLOW_FILE_EDIT|wc -l`
+if [[ $RES -gt 0 ]]; then
+    echo "DISALLOW_FILE_EDIT already set."
+else
+    echo "Modifying config (DISALLOW_FILE_EDIT) .."
+    echo "" >> wp-config.php
+    echo "# Disallowing file editing via WP (gnd, $DATUM)" >> wp-config.php
+    echo "define('DISALLOW_FILE_EDIT', true);" >> wp-config.php
+    echo "done."
+fi
+
+# Make WP access sisk straight
+RES=`cat wp-config.php|grep FS_METHOD|wc -l`
+if [[ $RES -gt 0 ]]; then
+    echo "FS_METHOD already set."
+else
+    echo "Modifying config (FS_METHOD) .."
+    echo "" >> wp-config.php
+    echo "# Makes WP access disk straight (not via FTP) (gnd, $DATUM)" >> wp-config.php
+    echo "define('FS_METHOD', 'direct');" >> wp-config.php
+    echo "done."
+fi
+
+# Leave a note in the wp-config
+echo "" >> wp-config.php
+echo "# WP last updated by gnd on $DATUM" >> wp-config.php
 
 # Finish
 echo "Cleaning up.."
