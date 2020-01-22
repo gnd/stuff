@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-    Artyoucaneat.sk subtitle extractor / transcriber / translator & composer
+    Artyoucaneat.sk audio extractor / transcriber / translator & subtitle generator
 
-    This script akes life easier for translators & subs makers of Artyoucaneat.sk
+    This script makes life easier for translators & subs makers of Artyoucaneat.sk
 
     In particular:
         - extracts the audio track from a MP4 video
@@ -55,7 +55,7 @@ def check_globals():
 
 
 """
-    Checks of the given file exists.
+    Checks if the given file exists.
 """
 def verify_mp4(input_filename):
     if not (os.path.isfile(input_filename)):
@@ -76,7 +76,7 @@ def verify_mp4(input_filename):
 def extract_audio(video_file, audio_file):
     ffmpeg_command = ["ffmpeg", "-y", "-i", video_file, "-ac", "1", "-ar", "44100", audio_file]
 
-    ### run the spider
+    ### run the extraction
     try:
         print("Trying to extract audio from {} to {}\nUsing \"{}\"".format(video_file, audio_file, " ".join(ffmpeg_command)))
         process = subprocess.Popen(ffmpeg_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -111,7 +111,7 @@ def upload_file(bucket_name, audio_file, destination_blob_name):
 
 """
     Asynchronously transcribes the audio file specified by the gcs_uri.
-    Taken from:  https://github.com/GoogleCloudPlatform/python-docs-samples/blob/master/speech/cloud-client/transcribe_async.py
+    Taken from: https://github.com/GoogleCloudPlatform/python-docs-samples/blob/master/speech/cloud-client/transcribe_async.py
 """
 def transcribe_gcs(gcs_uri, lang):
     transcription = []
@@ -135,7 +135,7 @@ def transcribe_gcs(gcs_uri, lang):
 
 
 """
-    Process transcribed sentences and subdivide them into a potential subtitle units
+    Process transcribed sentences and subdivide them into potential subtitle units
 
     This is currently very primitive and relies heavily on the way google divides
     the transcription into several parts (results). These are in turn divided into parts of
@@ -222,8 +222,12 @@ def generate_subs(subs_filename, subs):
         end_min = int(sub['end'] // 60)
         end_sec = int(sub['end'] % 60)
         end_msec = int(round(modf(sub['end'])[0],2)*1000)
-        #print("{}\n{:02d}:{:02d}:{:02d},{} --> {:02d}:{:02d}:{:02d},{}\n{}\n".format(index, start_hour, start_min, start_sec, start_msec, end_hour, end_min, end_sec, end_msec, sub['text']))
-        k = f.write("{}\n{:02d}:{:02d}:{:02d},{} --> {:02d}:{:02d}:{:02d},{}\n{}\n\n".format(index, start_hour, start_min, start_sec, start_msec, end_hour, end_min, end_sec, end_msec, sub['text']))
+        #print("{}\n{:02d}:{:02d}:{:02d},{} --> {:02d}:{:02d}:{:02d},{}\n{}\n".format(
+            index, start_hour, start_min, start_sec, start_msec, end_hour, end_min, end_sec, end_msec, sub['text']
+        ))
+        k = f.write("{}\n{:02d}:{:02d}:{:02d},{} --> {:02d}:{:02d}:{:02d},{}\n{}\n\n".format(
+            index, start_hour, start_min, start_sec, start_msec, end_hour, end_min, end_sec, end_msec, sub['text']
+        ))
         index+=1
     f.close()
     print("Subtitles saved !")
