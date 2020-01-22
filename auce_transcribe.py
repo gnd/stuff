@@ -39,9 +39,9 @@ from google.cloud.speech import types
 
 
 ### Set some globals
-BUCKET_NAME = "artyoucaneat_audio"                      # the bucket where we store the files for transcription
-GOOGLE_CRED = "/home/gnd/apps/gnd_gcp.json"             # location of google coud auth json
-SUBS_PERIOD = "4"                                       # how many seconds for one subtitle unit
+BUCKET_NAME = "" # the bucket where we store the files for transcription
+GOOGLE_CRED = "" # location of google coud auth json
+SUBS_PERIOD = "" # how many seconds for one subtitle unit
 
 
 """
@@ -132,9 +132,6 @@ def transcribe_gcs(gcs_uri, lang):
     print("Transcription done !")
 
     return response
-    #for result in response.results:
-    #    print(u'{}'.format(result.alternatives[0].transcript))
-        #print('Confidence: {}'.format(result.alternatives[0].confidence))
 
 
 """
@@ -250,14 +247,14 @@ def main():
         video_filename = os.path.basename(args.video).replace('.mp4','')
 
     ### make a temp audio filename
-    #audio_file = '/tmp/{}.wav'.format(video_filename)
+    audio_file = '/tmp/{}.wav'.format(video_filename)
 
     ### extract audio from the filename
-    #extract_audio(video_file, audio_file)
+    extract_audio(video_file, audio_file)
 
     ### upload file to google cloud
     blob_name = '{}_auce.wav'.format(video_filename)
-    #upload_file(BUCKET_NAME, audio_file, blob_name)
+    upload_file(BUCKET_NAME, audio_file, blob_name)
 
     ### transcribe audio
     response = transcribe_gcs("gs://{}/{}".format(BUCKET_NAME, blob_name), args.lang_from)
