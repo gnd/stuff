@@ -17,11 +17,23 @@
         3. Add the path to the auth .json into the google_cred global variable below
         4. Create a google cloud storage bucket
         5. Add the name of the bucket into the bucket_name global variable below
-        6. Install requirements: pip3 install --upgrade google-cloud-storage google-oauth google-cloud-speech
+        6. Install requirements: pip3 install --upgrade google-cloud-storage google-oauth google-cloud-speech google-cloud-translate==2.0.0
 
     Usage:
-        Run the script like ./auce_transcribe.py sk-SK en-US /path/to/video.mp4
+        -------------------------------------------------
+        1. For initial transcription, run the script like:
+
+                ./auce_transcribe.py -s sk-SK /path/to/video.mp4
+
         The transcribed subtitles will be stored into /path/to/video.srt
+        -------------------------------------------------
+        2. For translation of corrected subtitles, run:
+
+                ./auce_transcribe.py -l sk-SK en-US /path/to/subtitles.srt
+
+        The translated subtitles will be stored into /path/to/subtitles_EN.vtt
+        The original subtitles will be copied into /path/to/subtitles_SK.vtt
+        -------------------------------------------------
 
     gnd, 2020
 """
@@ -32,15 +44,17 @@ import pickle
 import argparse
 import subprocess
 from math import modf
-from google.cloud import storage
 from google.cloud import speech
-from google.cloud.speech import enums
+from google.cloud import storage
+from google.cloud import translate
 from google.cloud.speech import types
+from google.cloud.speech import enums
 
 
 ### Set some globals
 BUCKET_NAME = "" # the bucket where we store the files for transcription
 GOOGLE_CRED = "" # location of google coud auth json
+GOOGLE_CPID = "" # google cloud project ID
 SUBS_PERIOD = "" # how many seconds for one subtitle unit
 
 
@@ -55,7 +69,7 @@ def check_globals():
 
 
 """
-    Checks if the given file exists.
+    Checks if the given MP4 file exists.
 """
 def verify_mp4(input_filename):
     if not (os.path.isfile(input_filename)):
@@ -63,6 +77,22 @@ def verify_mp4(input_filename):
         sys.exit("Exiting.")
     else:
         if ('.mp4' != input_filename[-4:]):
+            print("Filename malformed.")
+            sys.exit("Exiting.")
+        else:
+            return True
+    return False
+
+
+"""
+    Checks if the given SRT file exists.
+"""
+def verify_srt(input_filename):
+    if not (os.path.isfile(input_filename)):
+        print("Filename does not exist.")
+        sys.exit("Exiting.")
+    else:
+        if ('.srt' != input_filename[-4:]):
             print("Filename malformed.")
             sys.exit("Exiting.")
         else:
@@ -93,13 +123,13 @@ def extract_audio(video_file, audio_file):
 """
     Uploads the audiofile to a google cloud storage bucket
 """
-def upload_file(bucket_name, audio_file, destination_blob_name):
+def gcs_upload_file(bucket_name, audio_file, destination_blob_name):
     print("Trying to login to Google Cloud Storage using credentials from {}".format(GOOGLE_CRED))
     storage_client = storage.Client.from_service_account_json(GOOGLE_CRED)
 
     print("Trying to upload {} to google cloud bucket \"{}\"".format(audio_file, bucket_name))
     bucket = storage_client.bucket(bucket_name)
-    blob = bucket.blob(destination_blob_name)
+    blob = bucket.blob(destination_blob_name, chunk_size=1048576)     #set smaller chunk_size to prevent timeouts on large files
     blob.upload_from_filename(audio_file)
 
     print(
@@ -113,7 +143,7 @@ def upload_file(bucket_name, audio_file, destination_blob_name):
     Asynchronously transcribes the audio file specified by the gcs_uri.
     Taken from: https://github.com/GoogleCloudPlatform/python-docs-samples/blob/master/speech/cloud-client/transcribe_async.py
 """
-def transcribe_gcs(gcs_uri, lang):
+def gcs_transcribe(gcs_uri, lang):
     transcription = []
 
     print("Trying to login to Google Cloud Speech using credentials from {}".format(GOOGLE_CRED))
@@ -132,6 +162,33 @@ def transcribe_gcs(gcs_uri, lang):
     print("Transcription done !")
 
     return response
+
+
+"""
+    Translate text via Google Cloud
+
+    Args:
+      text The content to translate in string format
+      target_language Required. The BCP-47 language code to use for translation.
+"""
+def gcs_translate_text(lang_from, lang_to, text):
+    print("Trying to login to Google Cloud Speech using credentials from {}".format(GOOGLE_CRED))
+    client = translate.TranslationServiceClient.from_service_account_json(GOOGLE_CRED)
+
+    print("Translating subtitles..")
+    contents = [text]
+    parent = client.location_path(GOOGLE_CPID, "global")
+    response = client.translate_text(
+        parent=parent,
+        contents=contents,
+        mime_type='text/plain',  # mime types: text/plain, text/html
+        source_language_code=lang_from,
+        target_language_code=lang_to)
+
+    # return translated text
+    print("Subtitles translated.")
+    return response.translations[0].translated_text
+
 
 
 """
@@ -159,26 +216,32 @@ def process_transcription(results, subtitle_period):
         alternative = result.alternatives[0]
         transcript = alternative.transcript
         first_word = alternative.words[0]
-        last_word = alternative.words[-1:][0]
+        last_word = alternative.words[-1]
 
         ### determine the start and end times of the whole alternative
         if first: # if processing the very first sentence
             start = first_word.end_time.seconds + (first_word.end_time.nanos / 10**9)
+            first = False
         else:
             start = first_word.start_time.seconds + (first_word.start_time.nanos / 10**9)
         end = last_word.start_time.seconds + (last_word.start_time.nanos / 10**9)
+        old_index = start//subtitle_period
 
         ### subdivide the sentence(s) within 'alternative' by subtitle_period
         temp_sub = {'text': '', 'start': start, 'end': 0}
-        old_index = start//subtitle_period
         if ((end-start) > subtitle_period):
             for word in alternative.words:
-                if first: # if processing the very first sentence
-                    word_start = word.end_time.seconds
-                    first = False
-                else:
-                    word_start = word.start_time.seconds
-                if ((word_start//subtitle_period) != old_index):
+                # get some word data
+                word_start = word.start_time.seconds + (word.start_time.nanos / 10**9)
+                word_end = word.end_time.seconds + (word.end_time.nanos / 10**9)
+                word_chars = len(word.word)
+                word_duration = word_end - word_start
+                # if we detect a unusually long word it might be a transcription errror
+                # in that case push the beginning of the word closer to its end
+                if (word_duration > 2):
+                    word_start = round(word_end - (word_chars * 0.1),2)
+                    #print("setting new start for {} to {}".format(word.word, word_start))
+                if (int(word_start//subtitle_period) != old_index):
                     temp_sub['end'] = old_word.end_time.seconds + (old_word.end_time.nanos / 10**9)
                     subs.append(temp_sub)
                     old_index = (word_start//subtitle_period)
@@ -189,12 +252,62 @@ def process_transcription(results, subtitle_period):
             # append last temp_sub
             temp_sub['end'] = word.end_time.seconds + (word.end_time.nanos / 10**9)
             subs.append(temp_sub)
+
     print("Subtitles done !")
     return subs
 
 
 """
-    Generates a subtitle file
+    Extract continuous text from subtitles.
+"""
+def extract_from_subs(subs_filename):
+    print("Extracting subtitles for translation")
+    f = open(subs_filename, 'r')
+    lines = f.readlines()
+    f.close()
+
+    ### process the file
+    subs = []
+    text = ""
+    index = 1
+    reading_time = False
+    reading_text = False
+    temp_sub = {'start': '', 'end': '', 'text': ''}
+    for line in lines:
+        # submit subtitle unit
+        if line == '\n':
+            reading_text = False
+            text_list = list(text)
+            if (text_list[-1] == '\n'):
+                text_list[-1] = '\n\n'
+                text = "".join(text_list)
+            subs.append(temp_sub)
+            temp_sub = {'start': '', 'end': '', 'text': ''}
+            index+=1
+            continue
+        # start reading subtitle unit
+        if line == "{}\n".format(index):
+            reading_time = True
+            continue
+        if reading_time:
+            #print("splitting {}".format(line))
+            temp_sub['start'] = line.split('-->')[0].strip()
+            temp_sub['end'] = line.split('-->')[1].strip()
+            reading_time = False
+            reading_text = True
+            continue
+        if reading_text:
+            text += line
+            temp_sub['text'] += line + " "
+    subs.append(temp_sub)
+    print('Subtitles extracted')
+
+    return (text, subs)
+
+
+
+"""
+    Generates a .SRT subtitle file
 
     The generated subs are in SRT format:
 
@@ -222,13 +335,48 @@ def generate_subs(subs_filename, subs):
         end_min = int(sub['end'] // 60)
         end_sec = int(sub['end'] % 60)
         end_msec = int(round(modf(sub['end'])[0],2)*1000)
-        #print("{}\n{:02d}:{:02d}:{:02d},{} --> {:02d}:{:02d}:{:02d},{}\n{}\n".format(
-            index, start_hour, start_min, start_sec, start_msec, end_hour, end_min, end_sec, end_msec, sub['text']
-        ))
-        k = f.write("{}\n{:02d}:{:02d}:{:02d},{} --> {:02d}:{:02d}:{:02d},{}\n{}\n\n".format(
-            index, start_hour, start_min, start_sec, start_msec, end_hour, end_min, end_sec, end_msec, sub['text']
-        ))
+        #print("{}\n{:02d}:{:02d}:{:02d},{} --> {:02d}:{:02d}:{:02d},{}\n{}\n".format(index, start_hour, start_min, start_sec, start_msec, end_hour, end_min, end_sec, end_msec, sub['text']))
+        k = f.write("{}\n{:02d}:{:02d}:{:02d},{} --> {:02d}:{:02d}:{:02d},{}\n{}\n\n".format(index, start_hour, start_min, start_sec, start_msec, end_hour, end_min, end_sec, end_msec, sub['text']        ))
         index+=1
+    f.close()
+    print("Subtitles saved !")
+
+
+"""
+    Generates a .VTT subtitle file
+
+    The generated subs are in VTT format:
+
+    --- snip ---
+    1
+    00:01:48,680 --> 00:01:50,238
+    Subtitle text.
+
+    2
+    00:01:51,280 --> 00:01:53,700
+    Next subtitle text.
+    ---- snip ---
+
+"""
+def generate_translated_subs(subs_filename, subs, text):
+    print("Saving translated subtitles to \"{}\"".format(subs_filename))
+    #print(text)
+
+    index = 1
+    sub_text = ""
+    f = open(subs_filename, 'w')
+    f.write("WEBVTT\n")
+    lines = text.split('\n')
+    for line in lines:
+        if line == '':
+            start = subs[index-1]['start'].replace(',','.')
+            end = subs[index-1]['end'].replace(',','.')
+            #print("{}\n{} --> {}\n{}".format(index, start, end, sub_text))
+            k = f.write("{} --> {}\n{}\n".format(start, end, sub_text))
+            sub_text = ""
+            index+=1
+            continue
+        sub_text += line + '\n'
     f.close()
     print("Subtitles saved !")
 
@@ -238,42 +386,97 @@ def main():
     check_globals()
 
     ### init argparse
+    ### actually this is ultra stupid i meed two mutually exclusive arguments, which have both two mandatory dependencies
+    ### no way how to do it with argparse meh
     parser = argparse.ArgumentParser(description="Subtitle extractor / transcriber / translator & composer")
-    parser.add_argument('lang_from', help='The language code of the input language in the video')
-    parser.add_argument('lang_to', help='The language code of the output language in the subs')
-    parser.add_argument('video', help='The video to be transcribed')
+    parser.add_argument("-s", "--transcribe", help=("Transcribe and generate initial subtitles. "
+    "Needed arguments: "
+    "lang_from - the language code of the input language in the video (eg. sk-SK or en-US). "
+    "video - the video to be transcribed in .mp4 format"), metavar=('lang_from','video'), nargs=2)
+    parser.add_argument("-l", "--translate", help=("Translate and generate final subtitles. "
+    "Needed arguments: "
+    "lang_from - the language code of the input language in the subs (eg. sk or en). "
+    "lang_to - the language code of the output language in the subs (eg. sk or en). "
+    "subs - The subtitles to be translated in .srt format"), metavar=('lang_from', 'lang_to', 'subs'), nargs=3)
     args = parser.parse_args()
 
-    ### parse args
-    print("Verifying {}".format(args.video))
-    if (verify_mp4(args.video)):
-        video_file = args.video
-        video_filename = os.path.basename(args.video).replace('.mp4','')
 
-    ### make a temp audio filename
-    audio_file = '/tmp/{}.wav'.format(video_filename)
+    """
+        Transcription & subtitle generation
+    """
+    if (args.transcribe):
+        args_lang = args.transcribe[0]
+        args_video = args.transcribe[1]
 
-    ### extract audio from the filename
-    extract_audio(video_file, audio_file)
+        ### verify if file exists
+        print("Verifying {}".format(args_video))
+        if (verify_mp4(args_video)):
+            video_file = args_video
+            video_filename = os.path.basename(args_video).replace('.mp4','')
 
-    ### upload file to google cloud
-    blob_name = '{}_auce.wav'.format(video_filename)
-    upload_file(BUCKET_NAME, audio_file, blob_name)
+        ### make a temp audio filename
+        audio_file = '/tmp/{}.wav'.format(video_filename)
 
-    ### transcribe audio
-    response = transcribe_gcs("gs://{}/{}".format(BUCKET_NAME, blob_name), args.lang_from)
+        ### extract audio from the filename
+        extract_audio(video_file, audio_file)
 
-    ### pickle the response in case something goes wrong
-    f = open('/tmp/results.pickle', 'wb')
-    pickle.dump(response, f)
-    f.close()
+        ### upload file to google cloud
+        blob_name = '{}_auce.wav'.format(video_filename)
+        gcs_upload_file(BUCKET_NAME, audio_file, blob_name)
 
-    ### process response word times
-    subs = process_transcription(response.results, int(SUBS_PERIOD))
+        ### transcribe audio
+        response = gcs_transcribe("gs://{}/{}".format(BUCKET_NAME, blob_name), args_lang)
 
-    ### generate a initial subtitle file
-    subtitle_filename = args.video.replace('.mp4','.srt')
-    generate_subs(subtitle_filename, subs)
+        ### pickle the response in case we need to process the transcription later
+        pickle_filename = args_video.replace('.mp4','.pickle')
+        f = open(pickle_filename, 'wb')
+        pickle.dump(response, f)
+        f.close()
+
+        ### process response word times
+        subs = process_transcription(response.results, int(SUBS_PERIOD))
+
+        ### generate a initial subtitle file
+        subtitle_filename = args_video.replace('.mp4','_initial.srt')
+        generate_subs(subtitle_filename, subs)
+
+
+    """
+        Translation of corrected subtitles
+    """
+    if (args.translate):
+        args_lang_from = args.translate[0]
+        args_lang_to = args.translate[1]
+        args_subs = args.translate[2]
+
+        ### verify if file exists
+        print("Verifying {}".format(args_subs))
+        if (verify_srt(args_subs)):
+            subs_file = args_subs
+            subs_filename = os.path.basename(args_subs).replace('.srt','')
+
+        ### extract text from subtitles
+        (text_from, subs) = extract_from_subs(args_subs)
+
+        ### translate the subtitles
+        result = gcs_translate_text(args_lang_from, args_lang_to, text_from)
+        text_to = str(result)
+        #print(text_to)
+
+        ### generate translated subtitles
+        subtitle_filename = args_subs.replace('.srt', '_'+args_lang_to.upper()+'.vtt')
+        generate_translated_subs(subtitle_filename, subs, text_to)
+
+        ### save a copy of input subs
+        subtitle_filename = args_subs.replace('.srt', '_'+args_lang_from.upper()+'.vtt')
+        generate_translated_subs(subtitle_filename, subs, text_from)
+
+
+    """
+        No option specified
+    """
+    if ((args.transcribe is None) & (args.translate is None)):
+        print("Please specify an action.")
 
 
 if __name__ == '__main__':
