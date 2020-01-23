@@ -23,13 +23,28 @@
         -------------------------------------------------
         1. For initial transcription, run the script like:
 
-                ./auce_transcribe.py -s sk-SK /path/to/video.mp4
+                ./auce_transcribe.py -s <lang_from> /path/to/video.mp4
+
+        where <lang_from> is the language that is spoken in the video, eg sk-SK for Slovak
+        or en-US for English.
 
         The transcribed subtitles will be stored into /path/to/video.srt
+        The raw transcription data are saved into /path/to/video.pickle
+        and can be used later with --generate.
         -------------------------------------------------
         2. For translation of corrected subtitles, run:
 
-                ./auce_transcribe.py -l sk-SK en-US /path/to/subtitles.srt
+                ./auce_transcribe.py -l <lang_from> <lang_to> /path/to/subtitles.srt
+
+        where <lang_from> is the original language of the subtitles eg. 'sk' or 'en'
+        and <lang_to> is the language into which the subtitles should be translated ('en' or 'sk')
+
+        The translated subtitles will be stored into /path/to/subtitles_EN.vtt
+        The original subtitles will be copied into /path/to/subtitles_SK.vtt
+        -------------------------------------------------
+        3. To generate initial subtitles from a pickled transcription, run:
+
+                ./auce_transcribe.py -g <subs_period> /path/to/video.pickle
 
         The translated subtitles will be stored into /path/to/subtitles_EN.vtt
         The original subtitles will be copied into /path/to/subtitles_SK.vtt
@@ -93,6 +108,22 @@ def verify_srt(input_filename):
         sys.exit("Exiting.")
     else:
         if ('.srt' != input_filename[-4:]):
+            print("Filename malformed.")
+            sys.exit("Exiting.")
+        else:
+            return True
+    return False
+
+
+"""
+    Checks if the given SRT file exists.
+"""
+def verify_pickle(input_filename):
+    if not (os.path.isfile(input_filename)):
+        print("Filename does not exist.")
+        sys.exit("Exiting.")
+    else:
+        if ('.pickle' != input_filename[-7:]):
             print("Filename malformed.")
             sys.exit("Exiting.")
         else:
@@ -365,7 +396,7 @@ def generate_translated_subs(subs_filename, subs, text):
     index = 1
     sub_text = ""
     f = open(subs_filename, 'w')
-    f.write("WEBVTT\n")
+    f.write("WEBVTT\n\n")
     lines = text.split('\n')
     for line in lines:
         if line == '':
@@ -393,6 +424,10 @@ def main():
     "Needed arguments: "
     "lang_from - the language code of the input language in the video (eg. sk-SK or en-US). "
     "video - the video to be transcribed in .mp4 format"), metavar=('lang_from','video'), nargs=2)
+    parser.add_argument("-g", "--generate", help=("Generate initial subtitles from a pickled transcription. "
+    "Needed arguments: "
+    'subs_period - The period in seconds into which the subs should be divided.'
+    "pickle - The pickled transcription (.pickle)"), metavar=('subs_period', 'pickle'), nargs=2)
     parser.add_argument("-l", "--translate", help=("Translate and generate final subtitles. "
     "Needed arguments: "
     "lang_from - the language code of the input language in the subs (eg. sk or en). "
@@ -470,6 +505,33 @@ def main():
         ### save a copy of input subs
         subtitle_filename = args_subs.replace('.srt', '_'+args_lang_from.upper()+'.vtt')
         generate_translated_subs(subtitle_filename, subs, text_from)
+
+
+    """
+        Only process existing transcription
+    """
+    if (args.generate):
+        args_period = args.generate[0]
+        args_pickle = args.generate[1]
+
+        ### verify if file exists
+        print("Verifying {}".format(args_pickle))
+        if (verify_pickle(args_pickle)):
+            pickle_file = args_pickle
+
+        ### load the pickled response
+        print("Loading pickled transcription")
+        f = open(pickle_file, 'rb')
+        response = pickle.load(f)
+        f.close()
+
+        ### process response word times
+        subs = process_transcription(response.results, int(args_period))
+
+        ### generate a initial subtitle file
+        subtitle_filename = args_pickle.replace('.pickle','_initial.srt')
+        generate_subs(subtitle_filename, subs)
+
 
 
     """
