@@ -67,10 +67,10 @@ from google.cloud.speech import enums
 
 
 ### Set some globals
-BUCKET_NAME = "" # the bucket where we store the files for transcription
-GOOGLE_CRED = "" # location of google coud auth json
-GOOGLE_CPID = "" # google cloud project ID
-SUBS_PERIOD = "" # how many seconds for one subtitle unit
+BUCKET_NAME = "artyoucaneat_audio"                      # the bucket where we store the files for transcription
+GOOGLE_CRED = "/home/gnd/apps/gnd_gcp.json"             # location of google coud auth json
+GOOGLE_CPID = "flowing-athlete-230113"                  # google cloud project ID
+SUBS_PERIOD = "4"                                       # how many seconds for one subtitle unit
 
 
 """
@@ -412,7 +412,7 @@ def generate_translated_subs(subs_filename, subs, text):
     print("Subtitles saved !")
 
 
-def main():
+if __name__ == '__main__':
     ### check if globals set
     check_globals()
 
@@ -423,7 +423,8 @@ def main():
     parser.add_argument("-s", "--transcribe", help=("Transcribe and generate initial subtitles. "
     "Needed arguments: "
     "lang_from - the language code of the input language in the video (eg. sk-SK or en-US). "
-    "video - the video to be transcribed in .mp4 format"), metavar=('lang_from','video'), nargs=2)
+    "video - the video to be transcribed in .mp4 format"
+    'subs_period - The period in seconds into which the subs should be divided.'), metavar=('lang_from','video', 'subs_period'), nargs=3)
     parser.add_argument("-g", "--generate", help=("Generate initial subtitles from a pickled transcription. "
     "Needed arguments: "
     'subs_period - The period in seconds into which the subs should be divided.'
@@ -442,12 +443,13 @@ def main():
     if (args.transcribe):
         args_lang = args.transcribe[0]
         args_video = args.transcribe[1]
+        args_period = args.transcribe[2]
 
         ### verify if file exists
         print("Verifying {}".format(args_video))
         if (verify_mp4(args_video)):
             video_file = args_video
-            video_filename = os.path.basename(args_video).replace('.mp4','')
+            video_filename = os.path.basename(args_video).strip('.mp4')
 
         ### make a temp audio filename
         audio_file = '/tmp/{}.wav'.format(video_filename)
@@ -469,7 +471,7 @@ def main():
         f.close()
 
         ### process response word times
-        subs = process_transcription(response.results, int(SUBS_PERIOD))
+        subs = process_transcription(response.results, int(args_period))
 
         ### generate a initial subtitle file
         subtitle_filename = args_video.replace('.mp4','_initial.srt')
@@ -533,13 +535,8 @@ def main():
         generate_subs(subtitle_filename, subs)
 
 
-
     """
         No option specified
     """
     if ((args.transcribe is None) & (args.translate is None)):
         print("Please specify an action.")
-
-
-if __name__ == '__main__':
-    main()
