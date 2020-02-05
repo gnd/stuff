@@ -21,7 +21,9 @@ Usage:
 
 import io
 import os
+import sys
 import argparse
+import subprocess
 from google.cloud import speech
 from google.cloud import storage
 from google.cloud.speech import types
@@ -34,19 +36,42 @@ BUCKET_NAME = "gnd_transcription_audio"                     # name of google clo
 
 
 """
-    Checks if the given MP4 file exists.
+    Checks if the given file exists.
 """
-def verify_wav(input_filename):
+def verify_file(input_filename):
     if not (os.path.isfile(input_filename)):
         print("Filename does not exist.")
         sys.exit("Exiting.")
     else:
-        if ('.wav' != input_filename[-4:]):
-            print("Filename malformed.")
-            sys.exit("Exiting.")
+        if (input_filename.endswith('.wav') |
+            input_filename.endswith('.mp3') |
+            input_filename.endswith('.ogg') |
+            input_filename.endswith('.flac')):
+                return True
         else:
-            return True
+            print("Unknown filename. Please provide a .wav / .mp3 / .ogg / .flac")
+            sys.exit("Exiting.")
     return False
+
+
+"""
+    Converts file into a mono WAV
+"""
+def convert_audio(input_file, audio_file):
+    ffmpeg_command = ["ffmpeg", "-y", "-i", input_file, "-ac", "1", "-ar", "44100", audio_file]
+
+    ### run the extraction
+    try:
+        print("Trying to convert audio from {} to {}\nUsing \"{}\"".format(input_file, audio_file, " ".join(ffmpeg_command)))
+        process = subprocess.Popen(ffmpeg_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        (data_out, err_out) = process.communicate()
+        returncode = process.returncode
+    except:
+        print("ERROR Couldnt run audo extraction")
+        print("{}".format(sys.exc_info()[1]))
+        sys.exit("Exiting")
+
+    print("Audio converted")
 
 
 """
@@ -104,19 +129,32 @@ if __name__ == '__main__':
     """
     ### verify if file exists
     print("Verifying {}".format(args.file))
-    if (verify_wav(args.file)):
-        audio_file = args.file
-        audio_filename = os.path.basename(args.file).strip('.wav')
+    if (verify_file(args.file)):
+        if (args.file.endswith('.wav')):
+            input_filename = os.path.basename(args.file).replace('.wav','')
+            outfile = args.file.strip('.wav') + '_transcribed.txt'
+        if (args.file.endswith('.mp3')):
+            input_filename = os.path.basename(args.file).replace('.mp3','')
+            outfile = args.file.strip('.mp3') + '_transcribed.txt'
+        if (args.file.endswith('.flac')):
+            input_filename = os.path.basename(args.file).replace('.flac','')
+            outfile = args.file.strip('.flac') + '_transcribed.txt'
+        if (args.file.endswith('.ogg')):
+            input_filename = os.path.basename(args.file).replace('.ogg','')
+            outfile = args.file.strip('.ogg') + '_transcribed.txt'
+        input_file = args.file
+
+    ### convert the file
+    convert_audio(input_file, '/tmp/' + input_filename + '.wav')
 
     ### upload file to google cloud
-    blob_name = '{}_transcribe.wav'.format(audio_filename)
-    gcs_upload_file(BUCKET_NAME, audio_file, blob_name)
+    blob_name = '{}_transcribe.wav'.format(input_filename)
+    gcs_upload_file(BUCKET_NAME, '/tmp/' + input_filename + '.wav', blob_name)
 
     ### transcribe audio
     response = gcs_transcribe("gs://{}/{}".format(BUCKET_NAME, blob_name), args.lang)
 
     ### print response into textfile
-    outfile = args.file.strip('.wav') + '_transcribed.txt'
     f = open(outfile, 'w')
     for result in response.results:
         f.write("{}\n".format(result.alternatives[0].transcript.encode('utf-8')))
