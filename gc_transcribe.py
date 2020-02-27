@@ -19,6 +19,11 @@ Usage:
     gnd, 2020
 """
 
+#TODO
+# - look into possible sentence regularisation
+# - is it hard to slap a .js overlay on this to be able to fix transcription ala trint ?
+# - compare with Amazon
+
 import io
 import os
 import sys
