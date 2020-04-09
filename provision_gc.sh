@@ -8,7 +8,7 @@
 TYPE="g1-small"
 IMAGE="freebsd-12-1-release-amd64"
 SIZE="30"
-PUBKEY='/home/gnd/.ssh/tpd.pub' #/home/gnd/.ssh/tpd.pub
+PUBKEY="" #/home/gnd/.ssh/tpd.pub
 KEY=`echo $PUBKEY|sed 's/\.pub//g'`
 
 # check if PUBKEY specified
