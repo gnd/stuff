@@ -21,7 +21,7 @@ if [[ $ROOT != "root" ]]; then
 fi
 
 # Get openjdk version first
-VER=`dpkg -la|grep openjdk|head -1|awk {'print $2;'}|sed 's/openjdk-//g' |sed 's/-jre.*//g'`
+VER=`dpkg -la|grep openjdk|grep jre|head -1|awk {'print $2;'}|sed 's/openjdk-//g' |sed 's/-jre.*//g'`
 
 # Update java.policy - check if not already done
 POLICY_UPDATED=`cat /etc/java-$VER-openjdk/security/java.policy|grep jnviewer-insert|wc -l`
