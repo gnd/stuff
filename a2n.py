@@ -2,6 +2,9 @@
 
 import sys
 
+nginx_path = ""
+apache_path = ""
+
 # Faux sanity check
 if len(sys.argv) > 3:
     print("Converting file: " + sys.argv[1])
