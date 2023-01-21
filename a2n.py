@@ -11,7 +11,7 @@ if len(sys.argv) > 3:
     nginx_site = site.replace(".conf","").replace("-le-ssl","").replace("-ssl","")
 else:
 	print("Please provide input arguments.")\
-	print("Usage: a2n.py <config_file> <apache_path> <nginx_path>")
+    print("Usage: a2n.py <config_file> <apache_path> <nginx_path>")
 
 # Read Apache config
 f = open(apache_path + site,'r')
