@@ -15,6 +15,7 @@ if len(sys.argv) > 3:
 else:
     print("Please provide input arguments.")
     print("Usage: a2n.py <config_file> <apache_path> <nginx_path>")
+    sys.exit()
 
 # Read Apache config
 f = open(apache_path + site,'r')
