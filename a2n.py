@@ -9,7 +9,7 @@ nginx_path = ""
 if len(sys.argv) > 1:
     print("Converting file: " + sys.argv[1])
     site = sys.argv[1]
-    nginx_site = site.replace(".conf","").replace("-le-ssl","")
+    nginx_site = site.replace(".conf","").replace("-le-ssl","").replace("-ssl","")
 else:
 	print("Please provide a configuration file.")
 
