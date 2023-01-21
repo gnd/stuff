@@ -5,7 +5,7 @@ import sys
 apache_path = ""
 nginx_path = ""
 
-
+# Faux sanity check
 if len(sys.argv) > 1:
     print("Converting file: " + sys.argv[1])
     site = sys.argv[1]
@@ -96,7 +96,7 @@ server {{
 }}
 """
 
-# Output the converted config to /etc/nginx/sites-available
+# Output the converted config to nginx_path
 f = open(nginx_path + nginx_site,'w')
 if proxy:
 	f.write(proxy_template.format(site_header, site_name, site_proxy))
