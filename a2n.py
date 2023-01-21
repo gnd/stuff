@@ -37,7 +37,7 @@ for line in lines:
     if 'ServerAlias' in line:
         site_name = site_name + " " + line.replace("ServerAlias ","").strip()
     if 'DocumentRoot' in line:
-        site_root = line.split()[1]
+        site_root = line.split()[1].replace('"',"")
     if 'ProxyPass /' in line:
     	proxy = True
     	print("Detected proxy config")
