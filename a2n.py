@@ -2,16 +2,16 @@
 
 import sys
 
-apache_path = ""
-nginx_path = ""
-
 # Faux sanity check
-if len(sys.argv) > 1:
+if len(sys.argv) > 3:
     print("Converting file: " + sys.argv[1])
     site = sys.argv[1]
+    apache_path = sys.argv[2]
+    nginx_path = sys.argv[3]
     nginx_site = site.replace(".conf","").replace("-le-ssl","").replace("-ssl","")
 else:
-	print("Please provide a configuration file.")
+	print("Please provide input arguments.")\
+	print("Usage: a2n.py <config_file> <apache_path> <nginx_path>")
 
 # Read Apache config
 f = open(apache_path + site,'r')
